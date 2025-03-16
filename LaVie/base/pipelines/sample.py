@@ -10,7 +10,7 @@ from diffusers.schedulers import DDIMScheduler, DDPMScheduler, PNDMScheduler, Eu
 from diffusers.models import AutoencoderKL
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 from omegaconf import OmegaConf
-from Long-CLIP.model import longclip
+from Long_CLIP.model import longclip
 
 
 import os, sys
