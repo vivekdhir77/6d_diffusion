@@ -8,6 +8,7 @@ from diffusers.utils.import_utils import is_xformers_available
 import torch.nn.functional as F
 from einops import rearrange, repeat
 import math
+from pipelines.sample import text_features
 
 @dataclass
 class Transformer3DModelOutput(BaseOutput):
@@ -272,51 +273,49 @@ class TemporalAttention(CrossAttention):
         self.rotary_emb = rotary_emb
 
     def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None):
+        # Import the global text_features variable
+        from pipelines.sample import text_features
+        
         time_rel_pos_bias = self.time_rel_pos_bias(hidden_states.shape[1], device=hidden_states.device)
         batch_size, sequence_length, _ = hidden_states.shape
-
-        encoder_hidden_states = encoder_hidden_states
 
         if self.group_norm is not None:
             hidden_states = self.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
 
-        query = self.to_q(hidden_states) # [b (h w)] f (nd * d)
+        # Generate query from hidden_states as before
+        query = self.to_q(hidden_states)  # [b (h w)] f (nd * d)
         dim = query.shape[-1]
         
-        if self.added_kv_proj_dim is not None:
-            key = self.to_k(hidden_states)
-            value = self.to_v(hidden_states)
-            encoder_hidden_states_key_proj = self.add_k_proj(encoder_hidden_states)
-            encoder_hidden_states_value_proj = self.add_v_proj(encoder_hidden_states)
-
-            key = self.reshape_heads_to_batch_dim(key)
-            value = self.reshape_heads_to_batch_dim(value)
-            encoder_hidden_states_key_proj = self.reshape_heads_to_batch_dim(encoder_hidden_states_key_proj)
-            encoder_hidden_states_value_proj = self.reshape_heads_to_batch_dim(encoder_hidden_states_value_proj)
-
-            key = torch.concat([encoder_hidden_states_key_proj, key], dim=1)
-            value = torch.concat([encoder_hidden_states_value_proj, value], dim=1)
-        else:
-            encoder_hidden_states = encoder_hidden_states if encoder_hidden_states is not None else hidden_states
-            key = self.to_k(encoder_hidden_states)
-            value = self.to_v(encoder_hidden_states)
-            
+        # Instead of generating key and value from hidden_states or encoder_hidden_states,
+        # use the text_features tensor
+        
+        # text_features has shape [2, 2, 512]
+        # We need to ensure it has the right dimensionality for our attention mechanism
+        
+        # Project text_features to match the expected dimension
+        # The linear projections should convert from 512 to dim (which is heads * dim_head)
+        text_features_reshaped = text_features.to(hidden_states.device, dtype=hidden_states.dtype)
+        
+        # Apply linear projections to get key and value
+        key = self.to_k(text_features_reshaped)  # Project from text embedding dim to inner_dim
+        value = self.to_v(text_features_reshaped)  # Project from text embedding dim to inner_dim
+        
         if attention_mask is not None:
             if attention_mask.shape[-1] != query.shape[1]:
                 target_length = query.shape[1]
                 attention_mask = F.pad(attention_mask, (0, target_length), value=0.0)
                 attention_mask = attention_mask.repeat_interleave(self.heads, dim=0)
 
+        # Use the _attention method with our query and text_features-derived key and value
         if self._slice_size is None or query.shape[0] // self._slice_size == 1:
             hidden_states = self._attention(query, key, value, attention_mask, time_rel_pos_bias)
         else:
             hidden_states = self._sliced_attention(query, key, value, sequence_length, dim, attention_mask)
 
-        # linear proj
+        # Linear projection and dropout as before
         hidden_states = self.to_out[0](hidden_states)
-
-        # dropout
         hidden_states = self.to_out[1](hidden_states)
+        
         return hidden_states
 
 

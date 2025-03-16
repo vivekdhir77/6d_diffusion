@@ -17,6 +17,7 @@ from diffusers.schedulers import DDIMScheduler, DDPMScheduler, EulerDiscreteSche
 from diffusers.models import AutoencoderKL
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 from cog import BasePredictor, Input, Path
+from Long-CLIP.model import longclip
 
 # base model
 sys.path.insert(0, "base")
@@ -416,3 +417,8 @@ def auto_inpainting_copy_no_mask(
     video_clip = samples[0].permute(1, 0, 2, 3).contiguous()  # [16, 4, 32, 32]
     video_clip = vae.decode(video_clip / 0.18215).sample  # [16, 3, 256, 256]
     return video_clip
+
+model, preprocess = longclip.load("./checkpoints/longclip-B.pt", device=device)
+text = longclip.tokenize(["A man is crossing the street with a red car parked nearby.", "A man is driving a car in an urban scene."]).to(device)
+with torch.no_grad():
+    text_features = model.encode_text(text)

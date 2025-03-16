@@ -10,17 +10,29 @@ from diffusers.schedulers import DDIMScheduler, DDPMScheduler, PNDMScheduler, Eu
 from diffusers.models import AutoencoderKL
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 from omegaconf import OmegaConf
+from Long-CLIP.model import longclip
+
 
 import os, sys
 sys.path.append(os.path.split(sys.path[0])[0])
 from models import get_models
 import imageio
+global text_features
 
 def main(args):
 	if args.seed is not None:
 		torch.manual_seed(args.seed)
 	torch.set_grad_enabled(False)
 	device = "cuda" if torch.cuda.is_available() else "cpu"
+	model, preprocess = longclip.load("./checkpoints/longclip-B.pt", device=device)
+	
+	# Replace hardcoded prompts with the ones from config
+	# Using the first two prompts from args.text_prompt (or fewer if only one exists)
+	sample_prompts = args.text_prompt
+	text = longclip.tokenize(sample_prompts).to(device)
+	with torch.no_grad():
+		text_features = model.encode_text(text)
+		text_features = torch.stack([text_features, text_features])
 
 	sd_path = args.pretrained_path + "/stable-diffusion-v1-4"
 	unet = get_models(args, sd_path).to(device, dtype=torch.float16)
