@@ -17,9 +17,12 @@ import os, sys
 sys.path.append(os.path.split(sys.path[0])[0])
 from models import get_models
 import imageio
-global text_features
+
+# At the module level
+text_features = None
 
 def main(args):
+	global text_features
 	if args.seed is not None:
 		torch.manual_seed(args.seed)
 	torch.set_grad_enabled(False)

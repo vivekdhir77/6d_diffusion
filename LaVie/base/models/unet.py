@@ -234,6 +234,27 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
                 use_relative_position=use_relative_position,
                 rotary_emb=rotary_emb,
             )
+        elif mid_block_type == "UNetMidBlock2DCrossAttn":
+            # Get a single value from the attention_head_dim if it's a tuple/list
+            attn_head_dim = attention_head_dim[-1] if isinstance(attention_head_dim, (list, tuple)) else attention_head_dim
+            
+            self.mid_block = UNetMidBlock3DCrossAttn(
+                in_channels=block_out_channels[-1],
+                temb_channels=time_embed_dim,
+                resnet_eps=norm_eps,
+                resnet_act_fn=act_fn,
+                output_scale_factor=mid_block_scale_factor,
+                resnet_time_scale_shift=resnet_time_scale_shift,
+                cross_attention_dim=cross_attention_dim,
+                attn_num_head_channels=attn_head_dim,
+                resnet_groups=norm_num_groups,
+                dual_cross_attention=dual_cross_attention,
+                use_linear_projection=use_linear_projection,
+                upcast_attention=upcast_attention,
+                use_first_frame=use_first_frame,
+                use_relative_position=use_relative_position,
+                rotary_emb=rotary_emb,
+            )
         else:
             raise ValueError(f"unknown mid_block_type : {mid_block_type}")
 

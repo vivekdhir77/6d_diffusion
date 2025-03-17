@@ -8,7 +8,7 @@ from diffusers.utils.import_utils import is_xformers_available
 import torch.nn.functional as F
 from einops import rearrange, repeat
 import math
-from pipelines.sample import text_features
+from LaVie.base.pipelines.sample import text_features
 
 @dataclass
 class Transformer3DModelOutput(BaseOutput):
@@ -274,7 +274,7 @@ class TemporalAttention(CrossAttention):
 
     def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None):
         # Import the global text_features variable
-        from pipelines.sample import text_features
+        from LaVie.base.pipelines.sample import text_features
         
         time_rel_pos_bias = self.time_rel_pos_bias(hidden_states.shape[1], device=hidden_states.device)
         batch_size, sequence_length, _ = hidden_states.shape
