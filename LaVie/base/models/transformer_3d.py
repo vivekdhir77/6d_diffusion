@@ -1,4 +1,3 @@
-
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -29,6 +28,8 @@ try:
     from attention import BasicTransformerBlock
 except:
     from .attention import BasicTransformerBlock
+
+from LaVie.base.pipelines.sample import text_features
 
 @dataclass
 class Transformer3DModelOutput(BaseOutput):
@@ -311,10 +312,18 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
 
         # 2. Blocks
         for block in self.transformer_blocks:
+            # Before calling the block, prepare text_features for use
+            text_features_local = text_features.to(hidden_states.device, dtype=hidden_states.dtype)
+            
+            # Pass text_features to the block
             hidden_states = block(
                 hidden_states,
                 attention_mask=attention_mask,
-                encoder_hidden_states=encoder_hidden_states,
+                # Instead of using encoder_hidden_states, use text_features
+                # You might still want to keep encoder_hidden_states as a parameter
+                # but internally the block should use text_features for key and value
+                encoder_hidden_states=encoder_hidden_states,  # This will be ignored for K,V generation
+                text_features=text_features_local,  # New parameter
                 encoder_attention_mask=encoder_attention_mask,
                 timestep=timestep,
                 cross_attention_kwargs=cross_attention_kwargs,

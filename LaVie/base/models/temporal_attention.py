@@ -275,6 +275,7 @@ class TemporalAttention(CrossAttention):
     def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None):
         # Import the global text_features variable
         from LaVie.base.pipelines.sample import text_features
+        print("We are here and this is being executed")
         
         time_rel_pos_bias = self.time_rel_pos_bias(hidden_states.shape[1], device=hidden_states.device)
         batch_size, sequence_length, _ = hidden_states.shape
